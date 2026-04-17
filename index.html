@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gráfica Personalizada</title>
+
+<style>
+*{box-sizing:border-box;}
+
+body{
+  margin:0;
+  font-family:Arial;
+  background:#121212;
+  color:#fff;
+}
+
+header{
+  background:#1c1c1c;
+  padding:15px;
+  text-align:center;
+  position:sticky;
+  top:0;
+}
+
+.cart-btn{
+  position:absolute;
+  right:15px;
+  top:10px;
+  background:#e53935;
+  padding:8px 12px;
+  border-radius:20px;
+}
+
+.cart-count{
+  background:#fff;
+  color:#e53935;
+  border-radius:50%;
+  padding:2px 6px;
+  font-size:12px;
+}
+
+.card{
+  background:#1e1e1e;
+  border-radius:15px;
+  padding:15px;
+  margin:10px;
+}
+
+.btn{
+  background:#e53935;
+  padding:12px;
+  text-align:center;
+  border-radius:10px;
+  margin-top:10px;
+}
+
+.cart{
+  position:fixed;
+  bottom:0;
+  width:100%;
+  height:90vh;
+  background:#181818;
+  display:none;
+  border-radius:20px 20px 0 0;
+  flex-direction:column;
+}
+
+.cart-content{
+  overflow:auto;
+  padding:15px;
+  flex:1;
+}
+
+.input-group{
+  margin-top:12px;
+}
+
+.input-group input, select{
+  width:100%;
+  padding:14px;
+  border-radius:12px;
+  border:none;
+  margin-top:6px;
+  background:#2a2a2a;
+  color:#fff;
+}
+
+.item{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:10px;
+}
+
+.qtd button{
+  background:#e53935;
+  border:none;
+  color:#fff;
+  padding:5px 10px;
+  border-radius:5px;
+}
+
+.finalizar{
+  background:#e53935;
+  padding:15px;
+  text-align:center;
+  font-weight:bold;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h2>Gráfica Personalizada</h2>
+  <div class="cart-btn" onclick="toggleCart()">
+    🛒 <span id="count" class="cart-count">0</span>
+  </div>
+</header>
+
+<div class="card">
+  <div>100 Cartões</div>
+  <div>R$ 30</div>
+  <div class="btn" onclick="addCarrinho('100 Cartões',30)">Adicionar</div>
+</div>
+
+<div class="cart" id="cart">
+
+<div class="cart-content">
+
+<h3>Seu Pedido</h3>
+<div id="lista"></div>
+<div id="total"></div>
+
+<h3>Seus Dados</h3>
+
+<input id="nome" placeholder="Nome">
+<input id="cpf" placeholder="CPF">
+<input id="cep" placeholder="CEP" onblur="buscarCEP()">
+<input id="rua" placeholder="Rua">
+<input id="numero" placeholder="Número">
+<input id="referencia" placeholder="Referência">
+
+<select id="pagamento" onchange="verTroco()">
+<option value="">Pagamento</option>
+<option>PIX</option>
+<option>Cartão</option>
+<option>Dinheiro</option>
+</select>
+
+<div id="boxTroco" style="display:none;">
+<input id="troco" placeholder="Troco">
+</div>
+
+</div>
+
+<div class="finalizar" onclick="finalizarPedido()">
+Finalizar Pedido
+</div>
+
+</div>
+
+<script>
+let carrinho=[];
+
+function addCarrinho(nome,preco){
+let item=carrinho.find(i=>i.nome===nome);
+if(item){item.qtd++;}else{carrinho.push({nome,preco,qtd:1});}
+atualizar();
+}
+
+function atualizar(){
+let lista=document.getElementById("lista");
+let total=0,count=0;
+lista.innerHTML="";
+
+carrinho.forEach((item,i)=>{
+total+=item.preco*item.qtd;
+count+=item.qtd;
+
+lista.innerHTML+=`
+<div class="item">
+${item.nome}
+<div class="qtd">
+<button onclick="menos(${i})">-</button>
+${item.qtd}
+<button onclick="mais(${i})">+</button>
+</div>
+</div>`;
+});
+
+document.getElementById("total").innerText="Total: R$ "+total;
+document.getElementById("count").innerText=count;
+}
+
+function mais(i){carrinho[i].qtd++;atualizar();}
+function menos(i){carrinho[i].qtd--;if(carrinho[i].qtd<=0)carrinho.splice(i,1);atualizar();}
+
+function toggleCart(){
+let c=document.getElementById("cart");
+c.style.display=c.style.display==="flex"?"none":"flex";
+}
+
+function verTroco(){
+let p=document.getElementById("pagamento").value;
+document.getElementById("boxTroco").style.display=p==="Dinheiro"?"block":"none";
+}
+
+function buscarCEP(){
+let cep=document.getElementById("cep").value.replace(/\D/g,'');
+
+fetch(`https://viacep.com.br/ws/${cep}/json/`)
+.then(r=>r.json())
+.then(d=>{
+if(!d.erro){
+document.getElementById("rua").value=d.logradouro;
+}
+});
+}
+
+function finalizarPedido(){
+
+let nome=document.getElementById("nome").value;
+let cpf=document.getElementById("cpf").value;
+let rua=document.getElementById("rua").value;
+let numero=document.getElementById("numero").value;
+let ref=document.getElementById("referencia").value;
+let cep=document.getElementById("cep").value;
+let pag=document.getElementById("pagamento").value;
+let troco=document.getElementById("troco").value;
+
+if(!nome||!cpf||!rua||!numero||!pag){
+alert("Preencha tudo!");
+return;
+}
+
+if(carrinho.length===0){
+alert("Adicione itens!");
+return;
+}
+
+let msg="🛒 *PEDIDO*\n\n";
+
+carrinho.forEach(i=>{
+msg+=`• ${i.nome} x${i.qtd}\n`;
+});
+
+let total=carrinho.reduce((s,i)=>s+i.preco*i.qtd,0);
+
+msg+=`\n💰 Total: R$ ${total}\n\n`;
+msg+=`👤 ${nome}\n📄 CPF: ${cpf}\n📍 ${rua}, ${numero}\n📌 ${ref}\n📦 CEP: ${cep}\n💳 ${pag}\n`;
+
+if(pag==="Dinheiro"&&troco){
+msg+=`💵 Troco: ${troco}\n`;
+}
+
+/* ENVIA PARA O KODULAR */
+let url="https://wa.me/5521966388515?text="+encodeURIComponent(msg);
+
+if(window.AppInventor){
+  window.AppInventor.setWebViewString(url);
+}else{
+  window.location.href=url;
+}
+}
+</script>
+
+</body>
+</html>
