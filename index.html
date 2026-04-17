@@ -23,6 +23,15 @@ header{
   top:0;
 }
 
+.home-btn{
+  position:absolute;
+  left:15px;
+  top:10px;
+  background:#2a2a2a;
+  padding:8px 12px;
+  border-radius:20px;
+}
+
 .cart-btn{
   position:absolute;
   right:15px;
@@ -72,11 +81,7 @@ header{
   flex:1;
 }
 
-.input-group{
-  margin-top:12px;
-}
-
-.input-group input, select{
+input, select{
   width:100%;
   padding:14px;
   border-radius:12px;
@@ -112,6 +117,7 @@ header{
 <body>
 
 <header>
+  <div class="home-btn" onclick="voltarHome()">🏠</div>
   <h2>Gráfica Personalizada</h2>
   <div class="cart-btn" onclick="toggleCart()">
     🛒 <span id="count" class="cart-count">0</span>
@@ -142,7 +148,7 @@ header{
 <input id="referencia" placeholder="Referência">
 
 <select id="pagamento" onchange="verTroco()">
-<option value="">Pagamento</option>
+<option value="">Forma de pagamento</option>
 <option>PIX</option>
 <option>Cartão</option>
 <option>Dinheiro</option>
@@ -163,6 +169,7 @@ Finalizar Pedido
 <script>
 let carrinho=[];
 
+/* CARRINHO */
 function addCarrinho(nome,preco){
 let item=carrinho.find(i=>i.nome===nome);
 if(item){item.qtd++;}else{carrinho.push({nome,preco,qtd:1});}
@@ -201,11 +208,17 @@ let c=document.getElementById("cart");
 c.style.display=c.style.display==="flex"?"none":"flex";
 }
 
+function voltarHome(){
+document.getElementById("cart").style.display="none";
+}
+
+/* TROCO */
 function verTroco(){
 let p=document.getElementById("pagamento").value;
 document.getElementById("boxTroco").style.display=p==="Dinheiro"?"block":"none";
 }
 
+/* CEP */
 function buscarCEP(){
 let cep=document.getElementById("cep").value.replace(/\D/g,'');
 
@@ -218,6 +231,57 @@ document.getElementById("rua").value=d.logradouro;
 });
 }
 
+/* MÁSCARA CPF */
+document.getElementById("cpf").addEventListener("input", function(e){
+let v = e.target.value.replace(/\D/g,"");
+
+if(v.length > 11) v = v.slice(0,11);
+
+v = v.replace(/(\d{3})(\d)/,"$1.$2");
+v = v.replace(/(\d{3})(\d)/,"$1.$2");
+v = v.replace(/(\d{3})(\d{1,2})$/,"$1-$2");
+
+e.target.value = v;
+});
+
+/* MÁSCARA TROCO */
+document.getElementById("troco").addEventListener("input", function(e){
+let v = e.target.value.replace(/\D/g,"");
+
+v = (v/100).toFixed(2) + "";
+
+v = v.replace(".", ",");
+v = v.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+e.target.value = "R$ " + v;
+});
+
+/* VALIDADOR CPF REAL */
+function validarCPF(cpf){
+cpf = cpf.replace(/\D/g,'');
+
+if(cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+
+let soma = 0, resto;
+
+for(let i=1;i<=9;i++)
+soma += parseInt(cpf.substring(i-1,i)) * (11-i);
+
+resto = (soma * 10) % 11;
+if(resto === 10 || resto === 11) resto = 0;
+if(resto !== parseInt(cpf.substring(9,10))) return false;
+
+soma = 0;
+for(let i=1;i<=10;i++)
+soma += parseInt(cpf.substring(i-1,i)) * (12-i);
+
+resto = (soma * 10) % 11;
+if(resto === 10 || resto === 11) resto = 0;
+
+return resto === parseInt(cpf.substring(10,11));
+}
+
+/* FINALIZAR */
 function finalizarPedido(){
 
 let nome=document.getElementById("nome").value;
@@ -229,8 +293,13 @@ let cep=document.getElementById("cep").value;
 let pag=document.getElementById("pagamento").value;
 let troco=document.getElementById("troco").value;
 
-if(!nome||!cpf||!rua||!numero||!pag){
+if(!nome || !cpf || !rua || !numero || !pag){
 alert("Preencha tudo!");
+return;
+}
+
+if(!validarCPF(cpf)){
+alert("CPF inválido!");
 return;
 }
 
@@ -239,29 +308,36 @@ alert("Adicione itens!");
 return;
 }
 
-let msg="🛒 *PEDIDO*\n\n";
+let total=carrinho.reduce((s,i)=>s+i.preco*i.qtd,0);
 
+let msg="🛒 *NOVO PEDIDO*\n\n";
+
+msg+="📦 *Itens:*\n";
 carrinho.forEach(i=>{
 msg+=`• ${i.nome} x${i.qtd}\n`;
 });
 
-let total=carrinho.reduce((s,i)=>s+i.preco*i.qtd,0);
+msg+=`\n💰 *Total:* R$ ${total}\n\n`;
 
-msg+=`\n💰 Total: R$ ${total}\n\n`;
-msg+=`👤 ${nome}\n📄 CPF: ${cpf}\n📍 ${rua}, ${numero}\n📌 ${ref}\n📦 CEP: ${cep}\n💳 ${pag}\n`;
+msg+="👤 *Cliente*\n";
+msg+=`Nome: ${nome}\n`;
+msg+=`CPF: ${cpf}\n\n`;
 
-if(pag==="Dinheiro"&&troco){
-msg+=`💵 Troco: ${troco}\n`;
+msg+="📍 *Endereço*\n";
+msg+=`${rua}, ${numero}\n`;
+msg+=`CEP: ${cep}\n`;
+msg+=`Referência: ${ref}\n\n`;
+
+msg+="💳 *Pagamento*\n";
+msg+=`${pag}\n`;
+
+if(pag==="Dinheiro" && troco){
+msg+=`Troco para: ${troco}\n`;
 }
 
-/* ENVIA PARA O KODULAR */
-let url="https://wa.me/5521966388515?text="+encodeURIComponent(msg);
+let url = "https://api.whatsapp.com/send?phone=5521966388515&text=" + encodeURIComponent(msg);
 
-if(window.AppInventor){
-  window.AppInventor.setWebViewString(url);
-}else{
-  window.location.href=url;
-}
+window.open(url, "_blank");
 }
 </script>
 
